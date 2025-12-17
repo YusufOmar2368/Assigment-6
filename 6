@@ -1,0 +1,104 @@
+
+# ...existing code...
+# filepath: /Users/yomar/Downloads/create_players.py
+# ...existing code...
+#!/usr/bin/env python3
+"""
+Create Player objects from /Users/yomar/Downloads/combine.csv
+"""
+from dataclasses import dataclass
+from typing import Optional, List
+import csv
+import os
+
+DEFAULT = "/Users/yomar/Downloads/combine.csv"
+
+
+def _to_float(s: Optional[str]) -> Optional[float]:
+    if s is None:
+        return None
+    s = str(s).strip()
+    if s == "":
+        return None
+    try:
+        return float(s)
+    except Exception:
+        cleaned = "".join(ch for ch in s if ch.isdigit() or ch in ".-")
+        if cleaned in ("", ".", "-", "-."):
+            return None
+        try:
+            return float(cleaned)
+        except Exception:
+            return None
+
+
+def _to_int(s: Optional[str]) -> Optional[int]:
+    f = _to_float(s)
+    return int(f) if f is not None and f == int(f) else (int(f) if f is not None else None)
+
+
+@dataclass
+class Player:
+    combineId: Optional[int] = None
+    playerId: Optional[int] = None
+    combineYear: Optional[int] = None
+    nameFirst: str = ""
+    nameLast: str = ""
+    nameFull: str = ""
+    position: str = ""
+    college: str = ""
+    heightInches: Optional[float] = None
+    weight: Optional[float] = None
+    dob: str = ""
+    combine40yd: Optional[float] = None
+    combineVert: Optional[float] = None
+    combineBroad: Optional[float] = None
+    # add other fields if needed
+
+    @classmethod
+    def from_dict(cls, row: dict) -> "Player":
+        # try several possible header names for common fields
+        def pick(*keys):
+            for k in keys:
+                v = row.get(k)
+                if v not in (None, ""):
+                    return v
+            return None
+
+        return cls(
+            combineId=_to_int(pick("combineId", "combine_id")),
+            playerId=_to_int(pick("playerId", "player_id")),
+            combineYear=_to_int(pick("combineYear", "year", "combine_year")),
+            nameFirst=(pick("nameFirst",) or "").strip(),
+            nameLast=(pick("nameLast",) or "").strip(),
+            nameFull=(pick("nameFull",) or ((pick("nameFirst") or "").strip() + " " + (pick("nameLast") or "").strip())).strip(),
+            position=(pick("combinePosition", "position", "combinePosition") or "").strip(),
+            college=(pick("college", "team", "collegeId") or "").strip(),
+            heightInches=_to_float(pick("heightInches", "combineHeight", "heightInches", "height")),
+            weight=_to_float(pick("weight", "combineWeight", "weight")),
+            dob=(pick("dob") or "").strip(),
+            combine40yd=_to_float(pick("combine40yd", "combine40", "40yd", "combine40yd")),
+            combineVert=_to_float(pick("combineVert", "vert", "combineVert")),
+            combineBroad=_to_float(pick("combineBroad", "broad", "combineBroad")),
+        )
+
+
+def load_players(csv_path: str = DEFAULT) -> List[Player]:
+    if not os.path.isfile(csv_path):
+        raise FileNotFoundError(csv_path)
+    players: List[Player] = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            p = Player.from_dict(row)
+            players.append(p)
+    return players
+
+
+if __name__ == "__main__":
+    players = load_players(DEFAULT)
+    print(f"Loaded {len(players)} players")
+    # show first 5 for verification
+    for p in players[:5]:
+        print(p)
+# ...existing
